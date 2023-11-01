@@ -1,22 +1,25 @@
-# text_to_speech.py
-import torch
+import torch  # isort:skip
+
 torch.manual_seed(42)
 import json
 import re
 import unicodedata
 from types import SimpleNamespace
 from scipy.io import wavfile
+
+
+import gradio as gr
 import numpy as np
 import regex
 
-from vietnam_tts.models import DurationNet, SynthesizerTrn
+from models import DurationNet, SynthesizerTrn
 
 title = "LightSpeed: Vietnamese Male Voice TTS"
 description = "Vietnam Male Voice TTS."
-config_file = "vietnam_tts/config.json"
-duration_model_path = "models/ttsvbx_duration_model.pth"
-lightspeed_model_path = "models/ttsgen_619k.pth"
-phone_set_file = "vietnam_tts/vbx_phone_set.json"
+config_file = "config.json"
+duration_model_path = "vbx_duration_model.pth"
+lightspeed_model_path = "gen_619k.pth"
+phone_set_file = "vbx_phone_set.json"
 device = "cuda" if torch.cuda.is_available() else "cpu"
 with open(config_file, "rb") as f:
     hps = json.load(f, object_hook=lambda x: SimpleNamespace(**x))
@@ -212,8 +215,23 @@ def speak(text):
     return hps.data.sampling_rate, y
 
 
-def align_audio(csv_text_file, our_dir):
-    pass
+# gr.Interface(
+#     fn=speak,
+#     inputs="text",
+#     outputs="audio",
+#     title=title,
+#     examples=[
+#         "Trăm năm trong cõi người ta, chữ tài chữ mệnh khéo là ghét nhau.",
+#         "Đoạn trường tân thanh, thường được biết đến với cái tên đơn giản là Truyện Kiều, là một truyện thơ của đại thi hào Nguyễn Du",
+#         "Lục Vân Tiên quê ở huyện Đông Thành, khôi ngô tuấn tú, tài kiêm văn võ. Nghe tin triều đình mở khoa thi, Vân Tiên từ giã thầy xuống núi đua tài.",
+#         "Lê Quý Đôn, tên thuở nhỏ là Lê Danh Phương, là vị quan thời Lê trung hưng, cũng là nhà thơ và được mệnh danh là nhà bác học lớn của Việt Nam trong thời phong kiến",
+#         "Tất cả mọi người đều sinh ra có quyền bình đẳng. Tạo hóa cho họ những quyền không ai có thể xâm phạm được; trong những quyền ấy, có quyền được sống, quyền tự do và quyền mưu cầu hạnh phúc.",
+#     ],
+#     description=description,
+#     theme="default",
+#     allow_screenshot=False,
+#     allow_flagging="never",
+# ).launch(debug=False)
 
 
 if __name__ == "__main__":

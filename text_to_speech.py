@@ -8,14 +8,17 @@ from types import SimpleNamespace
 from scipy.io import wavfile
 import numpy as np
 import regex
+import csv
+import os
+
 
 from vietnam_tts.models import DurationNet, SynthesizerTrn
 
 title = "LightSpeed: Vietnamese Male Voice TTS"
 description = "Vietnam Male Voice TTS."
 config_file = "vietnam_tts/config.json"
-duration_model_path = "models/ttsvbx_duration_model.pth"
-lightspeed_model_path = "models/ttsgen_619k.pth"
+duration_model_path = "models/tts/vbx_duration_model.pth"
+lightspeed_model_path = "models/tts/gen_619k.pth"
 phone_set_file = "vietnam_tts/vbx_phone_set.json"
 device = "cuda" if torch.cuda.is_available() else "cpu"
 with open(config_file, "rb") as f:
@@ -152,7 +155,6 @@ def text_to_speech(duration_net, generator, text):
     phone_duration = torch.where(
         phone_idx == sil_idx, torch.clamp_min(phone_duration, 200), phone_duration
     )
-    print(f"Phone duration is {phone_duration.shape}")
     # phone_duration = torch.where(phone_idx == 0, 0, phone_duration)
     phone_duration = torch.where(phone_idx == 0, 0, phone_duration)
 
@@ -197,8 +199,8 @@ def load_models():
     return duration_net, generator
 
 
-def speak(text):
-    duration_net, generator = load_models()
+def speak(text, models):
+    duration_net, generator = models
     paragraphs = text.split("\n")
     clips = []  # list of audio clips
     # silence = np.zeros(hps.data.sampling_rate // 4)
@@ -212,17 +214,42 @@ def speak(text):
     return hps.data.sampling_rate, y
 
 
-def align_audio(csv_text_file, our_dir):
-    pass
+def align_audio(csv_text_file, out_dir):
+    # load duration model and generator model
+    models = load_models()
+    csv_reader = csv.reader(csv_text_file, delimiter='|')
+    audio = []
+    for row in csv_reader:
+        start_time = float(row[0])
+        end_time = float(row[1])
+        
+        sample_rate, audio_seg = speak(row[2], models)
+
+        duration = int((end_time - start_time) * sample_rate)
+
+        print(f"The len of the audio: {len(audio_seg)}")
+        print(f"The shape of the audio: {audio.shape}")
+        print(f"Theactual_duration: {actual_duration}")
+        
+        actual_duration = len(audio_seg)
+
+         # Calculate the required padding
+        padding = max(0, duration - actual_duration)
+
+        padding_audio = np.full(shape=padding, fill_value=0.0, dtype=audio_seg.dtype)
+        
+        # Add the audio of the segment to the concatenated audio with padding
+        concatenated_audio  = np.concatenate((audio_seg, padding_audio), axis=0)
+        
+        output_file = os.path.join(out_dir, os.path.splitext(os.path.basename(csv_text_file))[0] + ".wav")
+        wavfile.write(output_file, sr, y_hat)
+        return output_file, sr
+
+
 
 
 if __name__ == "__main__":
-    text_ = """Tất cả mọi người đều sinh ra có quyền bình đẳng. Tạo hóa cho họ những quyền không ai có thể xâm phạm được; 
-    trong những quyền ấy, có quyền được sống, quyền tự do và quyền mưu cầu hạnh phúc. 
-    Tất cả mọi người đều sinh ra có quyền bình đẳng. Tạo hóa cho họ những quyền không ai có thể xâm phạm được; 
-    trong những quyền ấy, có quyền được sống, quyền tự do và quyền mưu cầu hạnh phúc. 
-    Tất cả mọi người đều sinh ra có quyền bình đẳng. Tạo hóa cho họ những quyền không ai có thể xâm phạm được; 
-    trong những quyền ấy, có quyền được sống, quyền tự do và quyền mưu cầu hạnh phúc."""
+
     text_ =  """bởi vì họ không có hình dạng và đường dễ nhận biết. 
     Do đó, nó phải tích hợp nhiều hình dạng nếu nó phải hiển thị một bàn tay thực tế. 
     Trong các trường hợp khác, trình tạo hình ảnh chỉ bị nhầm lẫn bất cứ khi nào lời nhắc văn bản quá phức tạp. 
@@ -245,7 +272,9 @@ if __name__ == "__main__":
         Ngoài ra, nếu bạn thấy rằng kết quả hình ảnh không bắt được trí tưởng tượng của bạn, 
         bạn có thể yêu cầu ChatGPT giúp cụm từ mô tả văn bản của bạn đúng cách. 
         ChatGPT là tất cả các kỹ thuật nhắc nhở bạn cần. Dali 3 có cùng chính sách bản quyền."""
-    sr, y_hat = speak(text_)
+    
+    models = load_models()
+    sr, y_hat = speak(text_, models)
     print(f"Sample rate {sr}")
     print(f"Ouput shape is {y_hat.shape}")
     output_file = "test_01.wav"

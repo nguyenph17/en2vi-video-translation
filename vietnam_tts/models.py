@@ -7,11 +7,10 @@ from torch.nn import functional as F
 from torch.nn.utils import remove_weight_norm, spectral_norm, weight_norm
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
-import attentions
-import commons
-import modules
-from commons import get_padding, init_weights
-from flow import ResidualCouplingBlock
+from .attentions import Encoder
+from .commons import sequence_mask, rand_slice_segments, get_padding, init_weights
+from .modules import LRELU_SLOPE, WN, ResBlock1, ResBlock2
+from .flow import ResidualCouplingBlock
 
 
 class PriorEncoder(nn.Module):
@@ -38,7 +37,7 @@ class PriorEncoder(nn.Module):
 
         self.emb = nn.Embedding(n_vocab, hidden_channels)
         nn.init.normal_(self.emb.weight, 0.0, hidden_channels**-0.5)
-        self.pre_attn_encoder = attentions.Encoder(
+        self.pre_attn_encoder = Encoder(
             hidden_channels,
             filter_channels,
             n_heads,
@@ -46,7 +45,7 @@ class PriorEncoder(nn.Module):
             kernel_size,
             p_dropout,
         )
-        self.post_attn_encoder = attentions.Encoder(
+        self.post_attn_encoder = Encoder(
             hidden_channels,
             filter_channels,
             n_heads,
@@ -59,12 +58,12 @@ class PriorEncoder(nn.Module):
     def forward(self, x, x_lengths, y_lengths, attn):
         x = self.emb(x) * math.sqrt(self.hidden_channels)  # [b, t, h]
         x = torch.transpose(x, 1, -1)  # [b, h, t]
-        x_mask = torch.unsqueeze(commons.sequence_mask(x_lengths, x.size(2)), 1).to(
+        x_mask = torch.unsqueeze(sequence_mask(x_lengths, x.size(2)), 1).to(
             x.dtype
         )
         x = self.pre_attn_encoder(x * x_mask, x_mask)
         y = torch.einsum("bht,blt->bhl", x, attn)
-        y_mask = torch.unsqueeze(commons.sequence_mask(y_lengths, y.size(2)), 1).to(
+        y_mask = torch.unsqueeze(sequence_mask(y_lengths, y.size(2)), 1).to(
             y.dtype
         )
         y = self.post_attn_encoder(y * y_mask, y_mask)
@@ -95,7 +94,7 @@ class PosteriorEncoder(nn.Module):
         self.gin_channels = gin_channels
 
         self.pre = nn.Conv1d(in_channels, hidden_channels, 1)
-        self.enc = modules.WN(
+        self.enc = WN(
             hidden_channels,
             kernel_size,
             dilation_rate,
@@ -105,7 +104,7 @@ class PosteriorEncoder(nn.Module):
         self.proj = nn.Conv1d(hidden_channels, out_channels * 2, 1)
 
     def forward(self, x, x_lengths, g=None):
-        x_mask = torch.unsqueeze(commons.sequence_mask(x_lengths, x.size(2)), 1).to(
+        x_mask = torch.unsqueeze(sequence_mask(x_lengths, x.size(2)), 1).to(
             x.dtype
         )
         x = self.pre(x) * x_mask
@@ -134,7 +133,7 @@ class Generator(torch.nn.Module):
         self.conv_pre = Conv1d(
             initial_channel, upsample_initial_channel, 7, 1, padding=3
         )
-        resblock = modules.ResBlock1 if resblock == "1" else modules.ResBlock2
+        resblock = ResBlock1 if resblock == "1" else ResBlock2
 
         self.ups = nn.ModuleList()
         for i, (u, k) in enumerate(zip(upsample_rates, upsample_kernel_sizes)):
@@ -170,7 +169,7 @@ class Generator(torch.nn.Module):
             x = x + self.cond(g)
 
         for i in range(self.num_upsamples):
-            x = F.leaky_relu(x, modules.LRELU_SLOPE)
+            x = F.leaky_relu(x, LRELU_SLOPE)
             x = self.ups[i](x)
             xs = None
             for j in range(self.num_kernels):
@@ -263,7 +262,7 @@ class DiscriminatorP(torch.nn.Module):
 
         for l in self.convs:
             x = l(x)
-            x = F.leaky_relu(x, modules.LRELU_SLOPE)
+            x = F.leaky_relu(x, LRELU_SLOPE)
             fmap.append(x)
         x = self.conv_post(x)
         fmap.append(x)
@@ -293,7 +292,7 @@ class DiscriminatorS(torch.nn.Module):
 
         for l in self.convs:
             x = l(x)
-            x = F.leaky_relu(x, modules.LRELU_SLOPE)
+            x = F.leaky_relu(x, LRELU_SLOPE)
             fmap.append(x)
         x = self.conv_post(x)
         fmap.append(x)
@@ -422,7 +421,7 @@ class SynthesizerTrn(nn.Module):
         z, m_q, logs_q, y_mask = self.enc_q(y, y_lengths, g=g)
         z_p = self.flow(z, y_mask, g=g)
 
-        z_slice, ids_slice = commons.rand_slice_segments(
+        z_slice, ids_slice = rand_slice_segments(
             z, y_lengths, self.segment_size
         )
         o = self.dec(z_slice, g=g)
@@ -453,7 +452,7 @@ class SynthesizerTrn(nn.Module):
         else:
             g = None
 
-        y_mask = torch.unsqueeze(commons.sequence_mask(y_lengths, attn.shape[1]), 1).to(
+        y_mask = torch.unsqueeze(sequence_mask(y_lengths, attn.shape[1]), 1).to(
             x_mask.dtype
         )
         z_p = m_p + torch.randn_like(m_p) * torch.exp(logs_p) * noise_scale

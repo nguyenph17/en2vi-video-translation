@@ -1,9 +1,11 @@
 import os
 import csv
-from pytube import YouTube
 import yt_dlp
 import re
 import subprocess
+import pyrubberband as pyrb
+from pydub import AudioSegment
+from moviepy.editor import VideoFileClip, AudioFileClip
 
 
 def remove_file_or_dir(path_:str):
@@ -52,11 +54,7 @@ def download_yt_video(video_url, save_dir="data/videos"):
     return output_path
 
 
-import subprocess
-import os
-
-
-def extract_sound(video_file_path, save_dir="data/sound", sample_rate=16000):
+def extract_sound(video_file_path, save_dir="data/audio", sample_rate=16000):
     file_name = os.path.splitext(os.path.basename(video_file_path))[0] + ".wav"
     out_filepath = os.path.join(save_dir, file_name)
     try:
@@ -83,3 +81,74 @@ def remove_sound(video_file_path, save_dir="data/video_no_sound"):
     print(f"Successfully remove sound from video, save at {out_filepath}")
     return out_filepath
 
+
+def is_youtube_link(link):
+    # Regular expression pattern to match YouTube video URLs
+    youtube_url_pattern = r'^https?://(?:www\.)?youtube\.com/watch\?v=[A-Za-z0-9_-]+|https?://youtu\.be/[A-Za-z0-9_-]+'
+    
+    # Use the re.match function to check if the link matches the pattern
+    match = re.match(youtube_url_pattern, link)
+    
+    # If there's a match, it's a YouTube video link; otherwise, it's not
+    return bool(match)
+
+
+# def change_audio_speed(input_audio, out_dir, speed_factor):
+#     # Run the ffmpeg command to change audio speed
+#     file_name = os.path.basename(input_audio)
+#     output_file = os.path.join(out_dir, file_name)
+
+#     sample_rate, audio_data = wavfile.read(input_audio)
+#     new_sample_rate = int(sample_rate / speed_factor)
+
+#     resampled_audio = resample(audio_data, int(len(audio_data) * new_sample_rate / sample_rate))
+                               
+#     wavfile.write(output_file, new_sample_rate, resampled_audio)
+#     return output_file, new_sample_rate
+
+
+
+def change_audio_speed(input_audio, out_dir, speed_factor):
+    try:
+        # Load the audio file
+        audio = AudioSegment.from_file(input_audio)
+
+        file_name = os.path.basename(input_audio)
+        output_file = os.path.join(out_dir, file_name)
+
+        # Adjust the speed while preserving pitch
+        adjusted_audio = audio.speedup(playback_speed=speed_factor)
+
+        # Export the adjusted audio
+        adjusted_audio.export(output_file, format="wav")
+
+        return output_file
+    except Exception as e:
+        return None
+
+
+def add_audio_to_video(video_path, audio_path, out_dir="outputs"):
+    try:
+        video_name = os.path.basename(video_path)
+        output_path = os.path.join(out_dir, video_name)
+
+        # Step 1: Load the video and audio files
+        video = VideoFileClip(video_path)
+        audio = AudioFileClip(audio_path)
+
+        # Step 2: Extract a subclip of the video to match the duration of the audio
+        # If the video is longer than the audio, this step is not necessary.
+        # video = ffmpeg_extract_subclip(video_path, 0, audio.duration)
+
+        # Step 3: Set the audio of the video to the loaded audio
+        video = video.set_audio(audio)
+
+        # Step 4: Save the video with the new audio
+        video.write_videofile(output_path, codec="libx264")
+
+        # Step 5: Close the audio and video objects
+        video.close()
+        audio.close()
+        return output_path
+    except Exception as e:
+        raise Exception(f"An error occurred: {e}")

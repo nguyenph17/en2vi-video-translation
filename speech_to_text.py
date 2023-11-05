@@ -10,13 +10,13 @@ from utils import remove_file_or_dir
 def export_transcript_to_file(segments, out_filepath):
     remove_file_or_dir(out_filepath)
     with open(out_filepath, "w+") as f:
-        csv_writer = csv.writer(f, delimiter=",")
+        csv_writer = csv.writer(f, delimiter="|")
         for segment in segments:
             csv_writer.writerow([segment.start, segment.end, segment.text])
     return out_filepath
 
 
-def speech_to_text(audio_file, language="vi", out_dir="data/texts/"):
+def speech_to_text(audio_file, language=None, out_dir="data/transcripts"):
     # Run on GPU with FP16
     model_size = "medium"
     # model = WhisperModel(model_size, device="cpu", compute_type="int8", download_root="model", local_files_only=True)

@@ -10,7 +10,7 @@ import numpy as np
 import regex
 import csv
 import os
-
+from copy import deepcopy
 
 from vietnam_tts.models import DurationNet, SynthesizerTrn
 
@@ -214,37 +214,46 @@ def speak(text, models):
     return hps.data.sampling_rate, y
 
 
-def align_audio(csv_text_file, out_dir):
+def translate_audio(csv_text_file, out_dir="data/translated_audio", apply_padding=False):
     # load duration model and generator model
-    models = load_models()
-    csv_reader = csv.reader(csv_text_file, delimiter='|')
-    audio = []
-    for row in csv_reader:
-        start_time = float(row[0])
-        end_time = float(row[1])
-        
-        sample_rate, audio_seg = speak(row[2], models)
+    with open(csv_text_file) as csvfile:
+        csv_reader = csv.reader(csvfile, delimiter='|')
+        models = load_models()
+        concatenated_audio = None
+        for row in csv_reader:
+            start_time = float(row[0])
+            end_time = float(row[1])
+            
+            sample_rate, audio_seg = speak(row[2], models)
 
-        duration = int((end_time - start_time) * sample_rate)
+            duration = int((end_time - start_time) * sample_rate)
 
-        print(f"The len of the audio: {len(audio_seg)}")
-        print(f"The shape of the audio: {audio.shape}")
-        print(f"Theactual_duration: {actual_duration}")
-        
-        actual_duration = len(audio_seg)
+            # print(f"The len of the audio: {len(audio_seg)}")
+            # print(f"The shape of the audio: {audio.shape}")
+            # print(f"Theactual_duration: {actual_duration}")
+            
+            actual_duration = len(audio_seg)
 
-         # Calculate the required padding
-        padding = max(0, duration - actual_duration)
+            if apply_padding:
+                # Calculate the required padding
+                padding = max(0, duration - actual_duration)
 
-        padding_audio = np.full(shape=padding, fill_value=0.0, dtype=audio_seg.dtype)
-        
-        # Add the audio of the segment to the concatenated audio with padding
-        concatenated_audio  = np.concatenate((audio_seg, padding_audio), axis=0)
-        
+                padding_audio = np.full(shape=padding, fill_value=0.0, dtype=audio_seg.dtype)
+                
+                # Add the audio of the segment to the concatenated audio with padding
+                if len(padding_audio) > 0:
+                    audio_seg  = np.concatenate((audio_seg, padding_audio), axis=0)
+                
+            
+            if concatenated_audio is None:
+                concatenated_audio = audio_seg
+            else:
+                concatenated_audio = np.concatenate((concatenated_audio, audio_seg), axis=0)
+            
         output_file = os.path.join(out_dir, os.path.splitext(os.path.basename(csv_text_file))[0] + ".wav")
-        wavfile.write(output_file, sr, y_hat)
-        return output_file, sr
-
+        wavfile.write(output_file, sample_rate, concatenated_audio)
+        return output_file, sample_rate
+    return None, None
 
 
 

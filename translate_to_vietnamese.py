@@ -33,7 +33,7 @@ def translate_en2vi(en_text: str) -> str:
 
 
 
-def translate_text_segments(text_segment_file, max_length=2000, out_dir='data/translated_texts/'):
+def translate_text_segments(text_segment_file, max_length=2000, out_dir='data/translated_transcripts/'):
     with open(text_segment_file) as csv_file:
         translated_segments = []
         csv_reader = csv.reader(csv_file, delimiter='|')

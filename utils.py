@@ -93,21 +93,6 @@ def is_youtube_link(link):
     return bool(match)
 
 
-# def change_audio_speed(input_audio, out_dir, speed_factor):
-#     # Run the ffmpeg command to change audio speed
-#     file_name = os.path.basename(input_audio)
-#     output_file = os.path.join(out_dir, file_name)
-
-#     sample_rate, audio_data = wavfile.read(input_audio)
-#     new_sample_rate = int(sample_rate / speed_factor)
-
-#     resampled_audio = resample(audio_data, int(len(audio_data) * new_sample_rate / sample_rate))
-                               
-#     wavfile.write(output_file, new_sample_rate, resampled_audio)
-#     return output_file, new_sample_rate
-
-
-
 def change_audio_speed(input_audio, out_dir, speed_factor):
     try:
         # Load the audio file

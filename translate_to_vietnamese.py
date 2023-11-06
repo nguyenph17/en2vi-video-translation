@@ -31,29 +31,6 @@ def translate_en2vi(en_text: str) -> str:
     vi_text = " ".join(vi_text)
     return vi_text
 
-
-
-def translate_text_segments(text_segment_file, max_length=2000, out_dir='data/translated_transcripts/'):
-    with open(text_segment_file) as csv_file:
-        translated_segments = []
-        csv_reader = csv.reader(csv_file, delimiter='|')
-        for row in csv_reader:
-            translated_text = ""
-            if len(row[2]) > 2000:
-                chunks = split_paragraphs(row[2], max_length)
-                for chunk in chunks:
-                    translated_chunk = translate_en2vi(chunk)
-                    translated_text = " " + translated_chunk
-            else:
-                translated_text = translate_en2vi(row[2])
-            row[2] = translated_text
-            translated_segments.append(row)
-    
-    file_name = os.path.basename(text_segment_file)
-    file_path = os.path.join(out_dir, file_name)
-    return write_list_to_csv(translated_segments, file_path)
-
-
 def split_paragraphs(text, max_length=2000):
     sentences = sent_tokenize(text)
     current_paragraph = []
@@ -73,3 +50,27 @@ def split_paragraphs(text, max_length=2000):
         paragraphs.append(" ".join(current_paragraph))
 
     return paragraphs
+
+
+def translate_text_segments(text_segment_file, max_length=2000, out_dir='data/translated_transcripts/'):
+    """Translate the original transcript to Vietnamese transcript using model vinai-translate-en2vi
+    """
+    with open(text_segment_file) as csv_file:
+        translated_segments = []
+        csv_reader = csv.reader(csv_file, delimiter='|')
+        for row in csv_reader:
+            translated_text = ""
+            if len(row[2]) > 2000:
+                chunks = split_paragraphs(row[2], max_length)
+                for chunk in chunks:
+                    translated_chunk = translate_en2vi(chunk)
+                    translated_text = " " + translated_chunk
+            else:
+                translated_text = translate_en2vi(row[2])
+            row[2] = translated_text
+            translated_segments.append(row)
+    
+    file_name = os.path.basename(text_segment_file)
+    file_path = os.path.join(out_dir, file_name)
+    return write_list_to_csv(translated_segments, file_path)
+

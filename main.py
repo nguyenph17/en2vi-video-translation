@@ -59,6 +59,7 @@ def main(args):
     translated_audio_file, _ = generate_speech(translated_transcript_file)
     print(f"The translated audio file is saved at {translated_audio_file}")
     # Convert the default voice to your own voice (which has been trained)
+    translated_audio_file = "data/translated_audio/Idk_why_but_i_couldn_t_stop_smiling_lmao.wav"
     print(f"Step 4: Converting voice.................")
     converted_audio_file = convert_voice(translated_audio_file)
     print(f"The audio with desired voice file is saved at {converted_audio_file}")

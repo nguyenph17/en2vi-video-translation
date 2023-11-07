@@ -11,6 +11,7 @@ def convert_voice(input_audio,
     using so-vits-svc-fork to trained the model with your desired voice
     To train the model you can refer https://github.com/voicepaw/so-vits-svc-fork
     """    
+    os.makedirs(out_dir, exist_ok=True)
     file_name = os.path.basename(input_audio)
     output_path = os.path.join(out_dir, file_name)
 

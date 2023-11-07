@@ -215,6 +215,7 @@ def speak(text, models):
 
 
 def generate_speech(csv_text_file, out_dir="data/translated_audio", apply_padding=False):
+    os.makedirs(out_dir, exist_ok=True)
     # load duration model and generator model
     with open(csv_text_file) as csvfile:
         csv_reader = csv.reader(csvfile, delimiter='|')

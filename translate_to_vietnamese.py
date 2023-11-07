@@ -1,4 +1,3 @@
-import torch
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 import csv
 from utils import write_list_to_csv
@@ -55,6 +54,7 @@ def split_paragraphs(text, max_length=2000):
 def translate_text_segments(text_segment_file, max_length=2000, out_dir='data/translated_transcripts/'):
     """Translate the original transcript to Vietnamese transcript using model vinai-translate-en2vi
     """
+    os.makedirs(out_dir, exist_ok=True)
     with open(text_segment_file) as csv_file:
         translated_segments = []
         csv_reader = csv.reader(csv_file, delimiter='|')

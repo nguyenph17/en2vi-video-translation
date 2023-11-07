@@ -3,7 +3,6 @@ import csv
 import yt_dlp
 import re
 import subprocess
-import pyrubberband as pyrb
 from pydub import AudioSegment
 from moviepy.editor import VideoFileClip, AudioFileClip
 
@@ -35,6 +34,7 @@ def correct_filepath(filepath):
 
 
 def download_yt_video(video_url, save_dir="data/videos"):
+    os.makedirs(save_dir, exist_ok=True)
     video_path = os.path.join(save_dir, f'%(title)s.%(ext)s')
     ydl_opts = {
       'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
@@ -55,12 +55,10 @@ def download_yt_video(video_url, save_dir="data/videos"):
 
 
 def extract_sound(video_file_path, save_dir="data/audio", sample_rate=16000):
+    os.makedirs(save_dir, exist_ok=True)
     file_name = os.path.splitext(os.path.basename(video_file_path))[0] + ".wav"
     out_filepath = os.path.join(save_dir, file_name)
-    try:
-        os.remove(out_filepath)
-    except OSError:
-        pass
+    remove_file_or_dir(out_filepath)
 
     cmd = f'ffmpeg -i {video_file_path} -ar {sample_rate} -ac 1 -c:a pcm_s16le {out_filepath} -loglevel warning'
     print(f"{cmd}")
@@ -69,12 +67,10 @@ def extract_sound(video_file_path, save_dir="data/audio", sample_rate=16000):
     return out_filepath
 
 def remove_sound(video_file_path, save_dir="data/video_no_sound"):
+    os.makedirs(save_dir, exist_ok=True)
     file_name = os.path.basename(video_file_path)
     out_filepath = os.path.join(save_dir, file_name)
-    try:
-        os.remove(out_filepath)
-    except OSError:
-        pass
+    remove_file_or_dir(out_filepath)
 
     cmd = f"ffmpeg -i {video_file_path} -c:v copy -an {out_filepath} -loglevel warning"
     subprocess.run(cmd.split())
@@ -84,7 +80,7 @@ def remove_sound(video_file_path, save_dir="data/video_no_sound"):
 
 def is_youtube_link(link):
     # Regular expression pattern to match YouTube video URLs
-    youtube_url_pattern = r'^https?://(?:www\.)?youtube\.com/watch\?v=[A-Za-z0-9_-]+|https?://youtu\.be/[A-Za-z0-9_-]+'
+    youtube_url_pattern = r'^https?://(?:www\.)?youtube\.com'
     
     # Use the re.match function to check if the link matches the pattern
     match = re.match(youtube_url_pattern, link)
@@ -95,6 +91,7 @@ def is_youtube_link(link):
 
 def change_audio_speed(input_audio, out_dir, speed_factor):
     try:
+        os.makedirs(out_dir, exist_ok=True)
         # Load the audio file
         audio = AudioSegment.from_file(input_audio)
 
@@ -114,6 +111,7 @@ def change_audio_speed(input_audio, out_dir, speed_factor):
 
 def add_audio_to_video(video_path, audio_path, out_dir="outputs"):
     try:
+        os.makedirs(out_dir, exist_ok=True)
         video_name = os.path.basename(video_path)
         output_path = os.path.join(out_dir, video_name)
 

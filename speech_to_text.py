@@ -1,9 +1,6 @@
 from faster_whisper import WhisperModel
 import os
 import csv
-import pandas as pd
-from googletrans import Translator
-from copy import deepcopy
 from utils import remove_file_or_dir
 
 
@@ -19,6 +16,7 @@ def export_transcript_to_file(segments, out_filepath):
 
 
 def speech_to_text(audio_file, device="cpu",language=None, out_dir="data/transcripts"):
+    os.makedirs(out_dir, exist_ok=True)
     # Choose whisper model
     model_size = "medium"
     # model = WhisperModel(model_size, device="cpu", compute_type="int8", download_root="models", local_files_only=True)
